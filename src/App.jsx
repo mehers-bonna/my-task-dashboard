@@ -1,15 +1,27 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router';
-import LoginPage from './pages/LoginPage';
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import LoginPage from "./pages/LoginPage";
+import Dashboard from "./pages/Dashboard";
 
 function App() {
+  const token = localStorage.getItem("token");
+  const isAuthenticated = !!token;
+
   return (
-    <Router>
+    <BrowserRouter>
       <Routes>
+        {/* login page */}
         <Route path="/" element={<LoginPage />} />
         
-        <Route path="/dashboard" element={<div>Dashboard Coming Soon...</div>} />
+        {/* if user had token then user will be enter dashboard */}
+        <Route
+          path="/dashboard"
+          element={isAuthenticated ? <Dashboard /> : <Navigate to="/" replace />}
+        />
+
+        {/* for incorrect url */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </Router>
+    </BrowserRouter>
   );
 }
 
