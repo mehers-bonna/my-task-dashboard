@@ -14,43 +14,45 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, ArcElement);
 const Dashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isChecking, setIsChecking] = useState(true);
   // for mobile sidebar controlling
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
 
   // fetching data from api and checking authentication
   useEffect(() => {
-  const checkAuthAndFetch = () => {
+  const checkAndFetch = async () => {
+    await new Promise(resolve => setTimeout(resolve, 10));
     const token = localStorage.getItem('token');
-    
+
     if (!token) {
-      navigate('/');
+      console.log("No token found, redirecting...");
+      navigate('/', { replace: true });
       return;
     }
 
-    const fetchData = async () => {
-      try {
-        const response = await axios.get('https://task-api-eight-flax.vercel.app/api/dashboard', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setData(response.data);
-        setLoading(false);
-      } catch (err) {
-        if (err.response?.status === 401) {
-          localStorage.removeItem('token');
-          navigate('/');
-        }
-        setLoading(false);
+    try {
+      const response = await axios.get('https://task-api-eight-flax.vercel.app/api/dashboard', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setData(response.data);
+    } catch (err) {
+      if (err.response?.status === 401) {
+        localStorage.removeItem('token');
+        navigate('/', { replace: true });
       }
-    };
-    fetchData();
+    } finally {
+      setLoading(false);
+      setIsChecking(false);
+    }
   };
 
-  const timeoutId = setTimeout(checkAuthAndFetch, 100);
-  return () => clearTimeout(timeoutId);
+  checkAndFetch();
 }, [navigate]);
 
-  if (loading) return <div className="h-screen flex items-center justify-center font-bold text-[#1e4d3e]">Loading Donezo...</div>;
+if (isChecking || loading) {
+  return <div className="h-screen flex items-center justify-center font-bold text-[#1e4d3e]">Loading Donezo...</div>;
+}
 
   
   // chart data configuration using analytics data

@@ -3,22 +3,17 @@ import LoginPage from "./pages/LoginPage";
 import Dashboard from "./pages/Dashboard";
 
 function App() {
-  const token = localStorage.getItem("token");
-  const isAuthenticated = !!token;
-
+  
   return (
     <BrowserRouter>
       <Routes>
         {/* login page */}
         <Route path="/" element={<LoginPage />} />
         
-        {/* if user had token then user will be enter dashboard */}
-        <Route
-          path="/dashboard"
-          element={isAuthenticated ? <Dashboard /> : <Navigate to="/" replace />}
-        />
+        {/* dashboard page */}
+        <Route path="/dashboard" element={<Dashboard />} />
 
-        {/* for incorrect url */}
+        {/* for wrong url */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

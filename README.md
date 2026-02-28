@@ -3,7 +3,7 @@
 Donezo is a responsive and interactive dashboard application built with **React.js** and **Tailwind CSS**. Developed as a professional job task, this project demonstrates seamless API integration, secure authentication, and a modern UI/UX approach.
 
 ## Live Demo
-View the live project here: https://keen-cajeta-8676ae.netlify.app/
+View the live project here: https://sensational-fox-b1b6c7.netlify.app/
 
 ## Key Features
 * Authentication: Secure login system with token-based access control and persistent sessions.
