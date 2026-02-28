@@ -2,269 +2,249 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { 
   LayoutDashboard, ListTodo, Calendar, BarChart3, Users, 
-  Settings, HelpCircle, LogOut, Search, Bell, Mail, Plus, 
-  Download, ArrowUpRight, MoreHorizontal, Play, Pause 
+  Settings, LogOut, Search, Bell, Mail, Plus,
+  ArrowUpRight, Play, Pause, MoreHorizontal, ShoppingBag, Video, Clock, Menu, X
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Bar } from 'react-chartjs-2';
-import {
-  Chart as ChartJS, CategoryScale, LinearScale, BarElement, 
-  Title, Tooltip, Legend
-} from 'chart.js';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, ArcElement } from 'chart.js';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, ArcElement);
 
 const Dashboard = () => {
-  const [stats, setStats] = useState(null);
-  const [users, setUsers] = useState([]);
-  const [analytics, setAnalytics] = useState([]);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  // for mobile sidebar controlling
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
 
+  // fetching data from api and checking authentication
   useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) { navigate('/'); return; }
+
     const fetchData = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const headers = { Authorization: `Bearer ${token}` };
-
-        // API endpoints: /api/overview, /api/users, /api/analytics
-        const [overviewRes, usersRes, analyticsRes] = await Promise.all([
-          axios.get('https://task-api-eight-flax.vercel.app/api/overview', { headers }),
-          axios.get('https://task-api-eight-flax.vercel.app/api/users', { headers }),
-          axios.get('https://task-api-eight-flax.vercel.app/api/analytics', { headers })
-        ]);
-
-        setStats(overviewRes.data);
-        setUsers(usersRes.data);
-        setAnalytics(analyticsRes.data);
-      } catch (error) {
-        console.error("Fetch error:", error);
+        const response = await axios.get('https://task-api-eight-flax.vercel.app/api/dashboard', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setData(response.data);
+        setLoading(false);
+      } catch (err) {
+        if (err.response?.status === 401) {
+          localStorage.removeItem('token');
+          navigate('/');
+        }
+        setLoading(false);
       }
     };
     fetchData();
-  }, []);
+  }, [navigate]);
 
-  // Chart Data Configuration
+  if (loading) return <div className="h-screen flex items-center justify-center font-bold text-[#1e4d3e]">Loading Donezo...</div>;
+
+  
+  // chart data configuration using analytics data
   const chartData = {
-    labels: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
+    labels: data?.analytics?.map(item => new Date(item.date).toLocaleDateString('en-US', { weekday: 'short' })[0]) || [],
     datasets: [{
-      label: 'Projects',
-      data: analytics.length ? analytics : [12, 19, 15, 25, 22, 18, 14], 
-      backgroundColor: '#1e4d3e',
-      borderRadius: 20,
-      barThickness: 25,
+      data: data?.analytics?.map(item => item.views) || [],
+      backgroundColor: (context) => context.dataIndex === 3 ? '#1e4d3e' : '#e5e7eb',
+      borderRadius: 12,
+      barThickness: 20,
     }]
   };
 
   return (
-    <div className="flex min-h-screen bg-[#F3F4F6] p-4 font-sans text-gray-800">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white rounded-3xl p-6 flex flex-col shadow-sm border border-gray-100">
-        <div className="flex items-center gap-2 mb-10 px-2">
-          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-            <div className="w-4 h-4 border-2 border-[#1e4d3e] rounded-full"></div>
-          </div>
-          <h1 className="text-xl font-bold text-[#1e4d3e]">Donezo</h1>
-        </div>
-
-        <nav className="flex-1 space-y-1">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4 px-3">Menu</p>
-          {[
-            { icon: <LayoutDashboard size={20} />, label: "Dashboard", active: true },
-            { icon: <ListTodo size={20} />, label: "Tasks", badge: "12+" },
-            { icon: <Calendar size={20} />, label: "Calendar" },
-            { icon: <BarChart3 size={20} />, label: "Analytics" },
-            { icon: <Users size={20} />, label: "Team" },
-          ].map((item, i) => (
-            <div key={i} className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all ${item.active ? 'bg-[#1e4d3e] text-white shadow-lg' : 'text-gray-500 hover:bg-gray-50'}`}>
-              <div className="flex items-center gap-3 font-medium">{item.icon} {item.label}</div>
-              {item.badge && <span className="bg-green-100 text-[#1e4d3e] text-[10px] px-2 py-0.5 rounded-full font-bold">{item.badge}</span>}
+    <div className="flex min-h-screen bg-[#F8F9FA] p-3 md:p-5 font-sans text-slate-800 relative">
+      
+      {/* responsive sidebar */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white rounded-r-[2.5rem] md:rounded-[2.5rem] p-8 flex flex-col shadow-xl md:shadow-sm border border-gray-50 transition-transform duration-300 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:relative md:flex`}>
+        <div className="flex items-center justify-between mb-10">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-[#E8F3EF] rounded-xl flex items-center justify-center">
+              <div className="w-4 h-4 border-2 border-[#1e4d3e] rounded-full"></div>
             </div>
-          ))}
-
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-8 mb-4 px-3">General</p>
-          <div className="flex items-center gap-3 p-3 text-gray-500 hover:bg-gray-50 rounded-xl cursor-pointer"><Settings size={20} /> Settings</div>
-          <div className="flex items-center gap-3 p-3 text-gray-500 hover:bg-gray-50 rounded-xl cursor-pointer"><HelpCircle size={20} /> Help</div>
-          <div onClick={() => {localStorage.removeItem('token'); navigate('/');}} className="flex items-center gap-3 p-3 text-gray-400 hover:text-red-500 rounded-xl cursor-pointer mt-4"><LogOut size={20} /> Logout</div>
-        </nav>
-
-        {/* Download App Widget */}
-        <div className="mt-auto bg-black rounded-2xl p-4 text-white relative overflow-hidden">
-          <div className="relative z-10">
-            <p className="text-xs font-light opacity-80">Download our</p>
-            <p className="font-bold mb-3">Mobile App</p>
-            <button className="bg-green-600 w-full py-2 rounded-lg text-xs font-bold">Download</button>
+            <h1 className="text-2xl font-bold text-[#1e4d3e]">Donezo</h1>
           </div>
-          <div className="absolute top-0 right-0 w-20 h-20 bg-green-500/20 blur-2xl rounded-full"></div>
+          <button onClick={() => setSidebarOpen(false)} className="md:hidden text-gray-400"><X /></button>
+        </div>
+        <nav className="flex-1 space-y-1">
+          <p className="text-[10px] font-bold text-gray-300 uppercase mb-4 ml-3">Menu</p>
+          <div className="flex items-center gap-4 p-4 rounded-2xl bg-[#1e4d3e] text-white shadow-lg cursor-pointer font-medium"><LayoutDashboard size={18} /> Dashboard</div>
+          <div className="flex items-center justify-between p-4 text-gray-400 hover:bg-gray-50 rounded-2xl cursor-pointer"><div className="flex items-center gap-4"><ListTodo size={18} /> Tasks</div><span className="bg-[#E8F3EF] text-[#1e4d3e] text-[9px] px-2 py-0.5 rounded-full font-bold">12+</span></div>
+          <div className="flex items-center gap-4 p-4 text-gray-400 hover:bg-gray-50 rounded-2xl cursor-pointer"><Calendar size={18} /> Calendar</div>
+          <div className="flex items-center gap-4 p-4 text-gray-400 hover:bg-gray-50 rounded-2xl cursor-pointer"><BarChart3 size={18} /> Analytics</div>
+          <div className="flex items-center gap-4 p-4 text-gray-400 hover:bg-gray-50 rounded-2xl cursor-pointer"><Users size={18} /> Team</div>
+          <p className="text-[10px] font-bold text-gray-300 uppercase mt-8 mb-4 ml-3">General</p>
+          <div className="flex items-center gap-4 p-4 text-gray-400 hover:bg-gray-50 rounded-2xl cursor-pointer"><Settings size={18} /> Settings</div>
+          <div onClick={() => {localStorage.removeItem('token'); navigate('/');}} className="flex items-center gap-4 p-4 text-gray-400 hover:text-red-500 rounded-2xl cursor-pointer"><LogOut size={18} /> Logout</div>
+        </nav>
+        <div className="mt-6 bg-black rounded-[2rem] p-5 text-white text-center">
+            <p className="text-[10px] opacity-60">Download our</p>
+            <p className="font-bold text-xs mb-3">Mobile App</p>
+            <button className="bg-[#27C278] w-full py-2 rounded-xl text-[10px] font-bold">Download</button>
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <main className="flex-1 px-8 py-2">
-        {/* Header Section */}
-        <header className="flex justify-between items-center mb-8">
-          <div className="relative w-96">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input type="text" placeholder="Search task" className="w-full pl-12 pr-4 py-3 bg-white rounded-2xl outline-none text-sm shadow-sm" />
+      {/* main content area */}
+      <main className="flex-1 md:pl-10 w-full overflow-x-hidden">
+        
+        {/* header section */}
+        <header className="flex flex-col lg:flex-row justify-between items-center mb-10 gap-4">
+          <div className="flex items-center w-full lg:w-auto gap-4">
+            <button onClick={() => setSidebarOpen(true)} className="md:hidden p-2 text-gray-600 bg-white rounded-lg shadow-sm"><Menu /></button>
+            <div className="relative flex-1 md:w-[450px]">
+              <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+              <input type="text" placeholder="Search task" className="w-full pl-14 pr-6 py-4 bg-white rounded-2xl outline-none text-sm shadow-sm border border-gray-50" />
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <button className="p-3 bg-white rounded-2xl shadow-sm text-gray-500 hover:text-[#1e4d3e]"><Mail size={20} /></button>
-            <button className="p-3 bg-white rounded-2xl shadow-sm text-gray-500 hover:text-[#1e4d3e]"><Bell size={20} /></button>
-            <div className="flex items-center gap-3 ml-4">
-              <div className="text-right">
-                <p className="text-sm font-bold leading-none">Totok Michael</p>
-                <p className="text-[10px] text-gray-400">tmichael20@mail.com</p>
-              </div>
-              <img src="https://ui-avatars.com/api/?name=Totok+Michael&background=1e4d3e&color=fff" className="w-10 h-10 rounded-2xl border-2 border-white shadow-sm" alt="avatar" />
+          <div className="flex items-center justify-between w-full lg:w-auto gap-4">
+            <div className="flex items-center gap-2">
+              <button className="p-3 md:p-4 bg-white rounded-2xl border border-gray-50 text-gray-400"><Mail size={20} /></button>
+              <button className="p-3 md:p-4 bg-white rounded-2xl border border-gray-50 text-gray-400 relative"><Bell size={20} /><span className="absolute top-3 md:top-4 right-3 md:right-4 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span></button>
+            </div>
+            <div className="flex items-center gap-3 md:gap-4 ml-2">
+               <div className="text-right text-gray-800 hidden sm:block">
+                  <p className="text-sm font-bold truncate w-24 md:w-auto">Totok Michael</p>
+                  <p className="text-[10px] text-gray-400 truncate w-24 md:w-auto">tmichael20@mail.com</p>
+               </div>
+               <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-[#1e4d3e] text-white flex items-center justify-center font-bold">TM</div>
             </div>
           </div>
         </header>
 
-        {/* Title and Buttons */}
-        <div className="flex justify-between items-end mb-6">
-          <div>
-            <h2 className="text-3xl font-bold mb-1">Dashboard</h2>
-            <p className="text-gray-400 text-sm">Plan, prioritize, and accomplish your tasks with ease.</p>
+        {/* top statistics using overview data */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="bg-[#1e4d3e] text-white p-6 rounded-[2.5rem] relative">
+            <div className="flex justify-between"><p className="text-[10px] opacity-70">Total Projects</p><ArrowUpRight size={14}/></div>
+
+            {/* showing total users from overview data */}
+            <h3 className="text-4xl font-bold my-2">{data?.overview?.totalUsers || 0}</h3>
+            <p className="text-[9px] bg-white/10 w-fit px-2 py-1 rounded-md">5% Increased from last month</p>
           </div>
-          <div className="flex gap-3">
-            <button className="bg-[#1e4d3e] text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-medium shadow-lg hover:opacity-90"><Plus size={18}/> Add Project</button>
-            <button className="bg-white text-gray-700 px-5 py-2.5 rounded-xl border border-gray-200 flex items-center gap-2 font-medium">Import Data</button>
+          <div className="bg-white p-6 rounded-[2.5rem] border border-gray-50 shadow-sm">
+             <div className="flex justify-between"><p className="text-[10px] text-gray-400 font-medium">Revenue</p><ArrowUpRight size={14} className="text-gray-300"/></div>
+
+             {/* showing total revenue from overview data */}
+             <h3 className="text-4xl font-bold my-2 text-slate-800">${data?.overview?.revenue?.toLocaleString() || 0}</h3>
+             <p className="text-[9px] text-gray-300">Target reached this month</p>
+          </div>
+          <div className="bg-white p-6 rounded-[2.5rem] border border-gray-50 shadow-sm">
+             <div className="flex justify-between"><p className="text-[10px] text-gray-400 font-medium">Active Users</p><ArrowUpRight size={14} className="text-gray-300"/></div>
+
+             {/* showing total active users from overview */}
+             <h3 className="text-4xl font-bold my-2 text-slate-800">{data?.overview?.activeUsers || 0}</h3>
+             <p className="text-[9px] text-gray-300">Currently online</p>
+          </div>
+          <div className="bg-white p-6 rounded-[2.5rem] border border-gray-50 shadow-sm">
+             <div className="flex justify-between"><p className="text-[10px] text-gray-400 font-medium">Growth Rate</p><ArrowUpRight size={14} className="text-gray-300"/></div>
+             
+             {/* showing total growth from overview */}
+             <h3 className="text-4xl font-bold my-2 text-slate-800">{data?.overview?.growth || 0}%</h3>
+             <p className="text-[9px] text-gray-300">Performance analytic</p>
           </div>
         </div>
 
-        {/* Stats Cards Section - Data from /api/overview */}
-        <div className="grid grid-cols-4 gap-6 mb-8">
-          {[
-            { label: "Total Projects", value: stats?.total_projects || 0, color: "bg-[#1e4d3e] text-white", trend: "5% Increased from last month" },
-            { label: "Ended Projects", value: stats?.stopped_projects || 0, color: "bg-white", trend: "6% Increased from last month" },
-            { label: "Running Projects", value: stats?.running_projects || 0, color: "bg-white", trend: "2% Increased from last month" },
-            { label: "Pending Project", value: "2", color: "bg-white", trend: "On Discuss" },
-          ].map((card, i) => (
-            <div key={i} className={`${card.color} p-6 rounded-[2.5rem] shadow-sm relative border border-gray-100`}>
-              <div className="flex justify-between items-start mb-2">
-                <p className={`text-sm font-medium ${i===0 ? 'opacity-80' : 'text-gray-500'}`}>{card.label}</p>
-                <div className={`p-1 rounded-full border ${i===0 ? 'border-white/20' : 'border-gray-200'}`}><ArrowUpRight size={14} /></div>
-              </div>
-              <h3 className="text-4xl font-bold mb-4">{card.value}</h3>
-              <p className={`text-[10px] ${i===0 ? 'opacity-70' : 'text-gray-400'}`}>{card.trend}</p>
-            </div>
-          ))}
-        </div>
+        {/* middle row */}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 mb-8">
 
-        {/* Lower Grid: Charts, Reminders, Collaboration */}
-        <div className="grid grid-cols-12 gap-6">
-          {/* Project Analytics Chart */}
-          <div className="col-span-4 bg-white p-6 rounded-[2.5rem] border border-gray-100">
-            <h4 className="font-bold mb-6">Project Analytics</h4>
-            <div className="h-48">
-              <Bar data={chartData} options={{ 
-                maintainAspectRatio: false, 
-                plugins: { legend: { display: false } },
-                scales: { x: { grid: { display: false } }, y: { grid: { borderDash: [5, 5] }, ticks: { display: false } } }
-              }} />
-            </div>
-            <div className="flex justify-between mt-4 text-[10px] font-bold text-gray-400 uppercase px-2">
-              <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+          {/* passing chart data (analytics) */}
+          <div className="xl:col-span-4 bg-white p-6 rounded-[2.5rem] border border-gray-50 shadow-sm">
+            <h4 className="font-bold text-sm mb-6">Project Analytics</h4>
+            <div className="h-40">
+              <Bar data={chartData} options={{ maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { display: false } } }} />
             </div>
           </div>
 
-          {/* Reminders Section */}
-          <div className="col-span-3 bg-white p-6 rounded-[2.5rem] border border-gray-100">
-            <div className="flex justify-between mb-4">
-              <h4 className="font-bold">Reminders</h4>
-              <MoreHorizontal size={18} className="text-gray-400" />
-            </div>
-            <div className="space-y-4">
-              <p className="text-lg font-bold leading-tight">Meeting with Arc Company</p>
-              <p className="text-xs text-gray-400">Time : 02:00 pm - 04:00 pm</p>
-              <button className="bg-[#1e4d3e] text-white w-full py-3 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm">
-                <Play size={16} fill="white" /> Start Meeting
-              </button>
-            </div>
-          </div>
+          <div className="xl:col-span-8 bg-white p-6 rounded-[2.5rem] border border-gray-50 shadow-sm overflow-hidden">
+             <div className="flex justify-between items-center mb-6"><h4 className="font-bold text-sm">Available Plans</h4><ShoppingBag size={18} className="text-gray-300"/></div>
+             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
-          {/* Project List Section */}
-          <div className="col-span-5 bg-white p-6 rounded-[2.5rem] border border-gray-100">
-            <div className="flex justify-between items-center mb-6">
-              <h4 className="font-bold">Project</h4>
-              <button className="text-xs border border-gray-200 px-3 py-1 rounded-lg font-bold">+ New</button>
-            </div>
-            <div className="space-y-4">
-              {[
-                { title: "Develop API Endpoints", date: "Nov 26, 2024", color: "bg-blue-500" },
-                { title: "Onboarding Flow", date: "Nov 28, 2024", color: "bg-green-500" },
-                { title: "Build Dashboard", date: "Nov 30, 2024", color: "bg-orange-500" },
-              ].map((proj, i) => (
-                <div key={i} className="flex items-center justify-between pb-4 border-b border-gray-50 last:border-0">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-2 h-2 rounded-full ${proj.color}`}></div>
-                    <div>
-                      <p className="text-sm font-bold">{proj.title}</p>
-                      <p className="text-[10px] text-gray-400">Due date: {proj.date}</p>
-                    </div>
+              {/* showing first 4 product using map method */}
+                {data?.products?.slice(0,4).map((product) => (
+                  <div key={product.id} className="bg-gray-50/50 p-4 rounded-3xl text-center border border-gray-100 group hover:bg-[#1e4d3e] transition-all duration-300">
+                    <p className="text-[10px] font-bold text-gray-500 mb-1 group-hover:text-white/70">{product.name}</p>
+                    <p className="text-xl font-black text-[#1e4d3e] mb-3 group-hover:text-white">${product.price}</p>
+                    <button className="w-full py-2 bg-white text-[#1e4d3e] rounded-xl text-[9px] font-bold shadow-sm">Select</button>
                   </div>
-                  <MoreHorizontal size={16} className="text-gray-300" />
-                </div>
-              ))}
-            </div>
+                ))}
+             </div>
           </div>
+        </div>
 
-          {/* Team Collaboration Section - Data from /api/users */}
-          <div className="col-span-6 bg-white p-8 rounded-[2.5rem] border border-gray-100">
-            <div className="flex justify-between items-center mb-8">
-              <h4 className="font-bold text-xl">Team Collaboration</h4>
-              <button className="text-xs border border-[#1e4d3e] text-[#1e4d3e] px-4 py-2 rounded-xl font-bold">+ Add Member</button>
-            </div>
-            <div className="space-y-6">
-              {users.slice(0, 4).map((user, i) => (
+        {/* bottom row */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          <div className="lg:col-span-12 xl:col-span-4 bg-white p-6 rounded-[2.5rem] border border-gray-50 shadow-sm">
+            <div className="flex justify-between items-center mb-6"><h4 className="font-bold text-sm">Team Collaboration</h4><button className="text-[9px] font-bold border px-3 py-1 rounded-lg text-gray-400">+ Add</button></div>
+            <div className="space-y-4">
+
+              {/* showing email and status maping users */}
+              {data?.users?.slice(0, 4).map((user, i) => (
                 <div key={i} className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <img src={`https://i.pravatar.cc/150?u=${user.email}`} className="w-12 h-12 rounded-2xl object-cover" alt="user" />
-                    <div>
-                      <p className="font-bold text-gray-800">{user.name}</p>
-                      <p className="text-xs text-gray-400">Working on <span className="text-gray-600 font-medium">Internal Project Repository</span></p>
-                    </div>
+                  <div className="flex items-center gap-3">
+                    <img src={`https://i.pravatar.cc/150?u=${user.id}`} className="w-10 h-10 rounded-xl object-cover" alt="" />
+                    <div className="overflow-hidden"><p className="font-bold text-[11px] truncate w-24 sm:w-auto">{user.name}</p><p className="text-[9px] text-gray-300 truncate w-32 sm:w-auto">{user.email}</p></div>
                   </div>
-                  <span className={`text-[10px] font-bold px-3 py-1 rounded-lg ${i % 2 === 0 ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-600'}`}>
-                    {i % 2 === 0 ? 'Completed' : 'In Progress'}
+                  <span className={`text-[8px] font-bold px-2 py-1 rounded-md flex-shrink-0 ${user.status === 'active' ? 'bg-[#E8F3EF] text-[#27C278]' : 'bg-[#FFF6F0] text-[#FF9F5A]'}`}>
+                    {user.status === 'active' ? 'Completed' : 'Pending'}
                   </span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Project Progress Section */}
-          <div className="col-span-3 bg-white p-8 rounded-[2.5rem] border border-gray-100 flex flex-col items-center justify-center">
-            <h4 className="font-bold w-full mb-6">Project Progress</h4>
-            <div className="relative w-40 h-40">
-              <svg className="w-full h-full transform -rotate-90">
-                <circle cx="80" cy="80" r="70" stroke="#f3f4f6" strokeWidth="12" fill="transparent" />
-                <circle cx="80" cy="80" r="70" stroke="#1e4d3e" strokeWidth="12" fill="transparent" 
-                  strokeDasharray="440" strokeDashoffset={440 - (440 * 41) / 100} strokeLinecap="round" />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-4xl font-bold">41%</span>
-                <span className="text-[10px] text-gray-400">Project Ended</span>
-              </div>
-            </div>
-            <div className="flex gap-4 mt-6 text-[10px] font-bold text-gray-400">
-               <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-600"></div> Completed</div>
-               <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-gray-200"></div> Pending</div>
-            </div>
+          <div className="lg:col-span-6 xl:col-span-5 space-y-6">
+             <div className="bg-white p-6 rounded-[2.5rem] border border-gray-50 shadow-sm">
+                <div className="flex justify-between mb-4"><h4 className="font-bold text-sm">Reminders</h4><MoreHorizontal size={16} className="text-gray-300"/></div>
+                <div className="flex flex-col">
+                  <p className="font-bold text-sm">Meeting with Arc Company</p>
+                  <p className="text-[10px] text-gray-300 mb-4">Time: 02:00 pm - 04:00 pm</p>
+                  <button className="w-full py-3 bg-[#1e4d3e] text-white rounded-2xl text-[11px] font-bold flex items-center justify-center gap-2 shadow-lg shadow-green-900/10"><Video size={14}/> Start Meeting</button>
+                </div>
+             </div>
+
+             <div className="bg-white p-6 rounded-[2.5rem] border border-gray-50 shadow-sm">
+                <div className="flex justify-between mb-4"><h4 className="font-bold text-sm">Project</h4><button className="text-[9px] font-bold border px-2 py-1 rounded-lg text-gray-400">+ New</button></div>
+                <div className="space-y-4">
+                   {["Develop API Endpoints", "Onboarding Flow", "Build Dashboard"].map((p, i) => (
+                      <div key={i} className="flex items-center justify-between text-[11px]">
+                         <div className="flex items-center gap-2"><div className={`w-1.5 h-1.5 rounded-full ${i===0?'bg-blue-500':i===1?'bg-green-500':'bg-orange-500'}`}></div><p className="font-bold">{p}</p></div>
+                         <MoreHorizontal size={14} className="text-gray-300"/>
+                      </div>
+                   ))}
+                </div>
+             </div>
           </div>
 
-          {/* Time Tracker Section */}
-          <div className="col-span-3 bg-[#1e4d3e] p-8 rounded-[3rem] text-white relative overflow-hidden flex flex-col justify-between">
-            <h4 className="font-bold">Time Tracker</h4>
-            <div className="relative z-10 text-center py-6">
-              <h2 className="text-4xl font-bold tracking-widest">01:24:08</h2>
-            </div>
-            <div className="flex justify-center gap-4 relative z-10">
-               <button className="p-3 bg-white/10 rounded-2xl hover:bg-white/20"><Pause fill="white" size={20}/></button>
-               <button className="p-3 bg-red-500 rounded-2xl shadow-lg shadow-red-500/40"><div className="w-4 h-4 bg-white rounded-sm"></div></button>
-            </div>
-            {/* Background design elements */}
-            <div className="absolute bottom-0 right-0 w-full h-24 bg-gradient-to-t from-green-500/20 to-transparent"></div>
+          <div className="lg:col-span-6 xl:col-span-3 space-y-6">
+             <div className="bg-white p-6 rounded-[2.5rem] border border-gray-50 shadow-sm text-center">
+                <h4 className="font-bold text-[11px] text-left mb-4 text-gray-400 uppercase tracking-wider">Project Progress</h4>
+                <div className="relative w-24 h-24 md:w-28 md:h-28 mx-auto mb-4 flex items-center justify-center">
+                   <div className="absolute inset-0 border-[8px] md:border-[10px] border-gray-50 rounded-full"></div>
+                   <div className="absolute inset-0 border-[8px] md:border-[10px] border-t-[#1e4d3e] border-r-[#1e4d3e] rounded-full rotate-45"></div>
+                   <div className="text-center"><p className="text-2xl font-black">41%</p><p className="text-[8px] text-gray-300 uppercase">Ended</p></div>
+                </div>
+                <div className="flex justify-center gap-4 text-[9px] font-bold">
+                   <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-[#1e4d3e]"></div>Done</span>
+                   <span className="flex items-center gap-1 text-gray-300"><div className="w-2 h-2 rounded-full bg-gray-100"></div>Pending</span>
+                </div>
+             </div>
+
+             <div className="bg-[#1e4d3e] p-6 rounded-[2.5rem] text-white relative overflow-hidden group">
+                <h4 className="font-bold text-[11px] opacity-70 mb-8">Time Tracker</h4>
+                <div className="relative z-10">
+                   <h2 className="text-2xl md:text-3xl font-black mb-10 tracking-widest">01:24:08</h2>
+                   <div className="flex gap-2">
+                      <button className="flex-1 py-2 bg-white/10 rounded-xl hover:bg-white/20 flex justify-center"><Pause size={16}/></button>
+                      <button className="flex-1 py-2 bg-red-500 rounded-xl hover:bg-red-600 flex justify-center shadow-lg shadow-red-500/20"><div className="w-3 h-3 bg-white rounded-sm"></div></button>
+                   </div>
+                </div>
+                <div className="absolute top-[-20%] right-[-20%] w-32 h-32 bg-white/5 rounded-full blur-3xl"></div>
+             </div>
           </div>
+
         </div>
       </main>
     </div>
