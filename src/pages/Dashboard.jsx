@@ -20,8 +20,13 @@ const Dashboard = () => {
 
   // fetching data from api and checking authentication
   useEffect(() => {
+  const checkAuthAndFetch = () => {
     const token = localStorage.getItem('token');
-    if (!token) { navigate('/'); return; }
+    
+    if (!token) {
+      navigate('/');
+      return;
+    }
 
     const fetchData = async () => {
       try {
@@ -39,7 +44,11 @@ const Dashboard = () => {
       }
     };
     fetchData();
-  }, [navigate]);
+  };
+
+  const timeoutId = setTimeout(checkAuthAndFetch, 100);
+  return () => clearTimeout(timeoutId);
+}, [navigate]);
 
   if (loading) return <div className="h-screen flex items-center justify-center font-bold text-[#1e4d3e]">Loading Donezo...</div>;
 
